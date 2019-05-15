@@ -10,8 +10,7 @@ import cv2, os
 from sklearn.cluster import MiniBatchKMeans
 
 class ColorQuantization():
-    def __init__(self, max_num_colors=256):
-        self.MAX = max_num_colors
+    def __init__(self):
         self.quatizators = {
             #'median_cut' : self.median_cut,
             'cube_cut'   : self.cube_cut,
@@ -21,24 +20,26 @@ class ColorQuantization():
     def median_cut(self, img, n):
         hei, wid = img.shape[:2]
 
+        while 1 <= n
+
         if n == 1:
             pass
         else:
             pass
 
-    def cube_cut(self, img, n):
+    def cube_cut(self, img, n, MAX=256):
         hei, wid = img.shape[:2]
         img = img.reshape((hei * wid, 3))
         buckets = self.__get_buckets(n)
 
         # for B, G and R
         for channel in range(3):
-            steps = self.MAX//buckets[channel]
-            
+            steps = MAX//buckets[channel]
+
             # for each bucket
             for i in range(1, buckets[channel]+1):
-                args = np.argwhere((img[:,channel] >=steps*(i-1)) & (img[:,channel] <= steps*i))
-                img[args[:, 0], channel] = int(np.mean(img[args[:, 0], channel]))
+                args = np.argwhere((img[:,channel] >= steps*(i-1)) & (img[:,channel] < steps*i))[:, 0]
+                img[args, channel] = int(np.mean(img[args, channel]))
 
         return img.reshape((hei, wid, 3))
 
