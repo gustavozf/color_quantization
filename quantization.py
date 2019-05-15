@@ -17,31 +17,78 @@ class ColorQuantization():
             'k_means'    : self.k_means
         }
 
+
+    # ----------------------------------------------------- MEDIAN CUT
     def median_cut(self, img, n):
         hei, wid = img.shape[:2]
+        img = img.reshape((hei * wid, 3))
 
-        while 1 <= n
+        buckets = [img]
 
-        if n == 1:
-            pass
-        else:
-            pass
+        while n > 1:
+            for _ in range(len(buckets)):
+                bucket = buckets.pop(0)
+                index_heav = self.__get_heaviest(bucket)
+
+                heav_buck = bucket[:, index_heav]
+                heav_buck.sort()
+                
+                index_mid = len(heav_buck)//2
+
+                bucket[:, index_heav] = heav_buck[ : index_mid]
+                buckets.append(bucket)
+
+                bucket[:, index_heav] = heav_buck[index_mid : ]
+                buckets.append(bucket)
+
+            n //= 2
+
+        #for 
+
+    def __get_heaviest(self, img):
+        heaviest = 0
+        heav_value = np.amax(img[:, 0]) - np.amin(img[:, 0])
+
+        for i in [1, 2]:
+            current_value =  np.amax(img[:, i]) - np.amin(img[:, i])
+
+            if current_value > heav_value:
+                heaviest = i
+                heav_value = current_value
+
+        return heaviest
+
+
+    # ----------------------------------------------------- CUBE CUT
 
     def cube_cut(self, img, n, MAX=256):
         hei, wid = img.shape[:2]
         img = img.reshape((hei * wid, 3))
-        buckets = self.__get_buckets(n)
+        buckets = self.__get_buckets_cube(n)
 
         # for B, G and R
         for channel in range(3):
-            steps = MAX//buckets[channel]
+            steps = self.MAX//buckets[channel]
 
             # for each bucket
             for i in range(1, buckets[channel]+1):
-                args = np.argwhere((img[:,channel] >= steps*(i-1)) & (img[:,channel] < steps*i))[:, 0]
+                args = np.argwhere((img[:,channel] >=steps*(i-1)) & (img[:,channel] < steps*i))[:, 0] #<= steps*i))
                 img[args, channel] = int(np.mean(img[args, channel]))
 
         return img.reshape((hei, wid, 3))
+
+
+    def __get_buckets_cube(self, n):
+        x = [0,0,0]
+        p = len(bin(n)) - 3
+
+        for i in range(p):
+            j = i%3
+            x[j] += 1
+        
+        return [2**x[0], 2**x[1], 2**x[2]]
+
+    # ----------------------------------------------------- K-MEDIANAS
 
     def k_means(self, img, n):
         hei, wid = img.shape[:2]
@@ -52,17 +99,6 @@ class ColorQuantization():
         qtz = cluster.cluster_centers_.astype("uint8")[labels]    
         
         return qtz.reshape((hei, wid, 3))
-
-    def __get_buckets(self, n):
-        x = [0,0,0]
-        p = len(bin(n)) - 3
-
-        for i in range(p):
-            j = i%3
-            x[j] += 1
-        
-        return [2**x[0], 2**x[1], 2**x[2]]
-
 
     def check_number_colors(self, img):
         hei, wid = img.shape[:2]
