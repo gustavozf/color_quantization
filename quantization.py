@@ -20,34 +20,58 @@ class ColorQuantization():
 
     # ----------------------------------------------------- MEDIAN CUT
     def median_cut(self, img, n):
+        img = img.copy()
+
         hei, wid = img.shape[:2]
         img = img.reshape((hei * wid, 3))
 
-        buckets = [img]
+        x = np.argwhere(img >= 0)
+        np.shape(x)
+        print(x)
 
+        buckets = [list(range(hei*wid))]
         while n > 1:
             for _ in range(len(buckets)):
+                # get the first buckets
                 bucket = buckets.pop(0)
-                index_heav = self.__get_heaviest(bucket)
+                current_img = img[bucket]
 
-                heav_buck = bucket[:, index_heav]
-                heav_buck.sort()
+                #get the heaviest (RGB)
+                index_heav = self.__get_heaviest(current_img, bucket)
+
+                # sort according to the heaviest column
+                mean_value = np.mean(current_img[:, index_heav])
+                np.argwhere()
+                #sorted_args = current_img[:, index_heav].argsort()
+                #current_img = current_img[sorted_args]
+                #bucket = bucket[sorted_args]
                 
-                index_mid = len(heav_buck)//2
+                # get the bucket's lenght/2
+                #index_mid = len(current_img[:, index_heav])//2
 
-                bucket[:, index_heav] = heav_buck[ : index_mid]
-                buckets.append(bucket)
-
-                bucket[:, index_heav] = heav_buck[index_mid : ]
-                buckets.append(bucket)
+                # append both new buckets
+                buckets.append(bucket[:index_mid, :])
+                buckets.append(bucket[index_mid:, :])
 
             n //= 2
 
-        #for 
+        for bucket in buckets:
+            img[bucket] = np.array([
+                int(np.mean(img[bucket][:, 0])),
+                int(np.mean(img[bucket][:, 1])),
+                int(np.mean(img[bucket][:, 2]))
+            ])
 
-    def __get_heaviest(self, img):
+        return img.reshape((hei, wid, 3))
+
+    def __get_heaviest(self, img, bucket):
+        cur_img = np.where(
+            (img[:, 0] >= np.amin(bucket[:, 0])) & 
+            (img[:, 0] <= np.amax(bucket[:, 0]))
+        )[0]
+        
         heaviest = 0
-        heav_value = np.amax(img[:, 0]) - np.amin(img[:, 0])
+        heav_value = np.amax(cur_img) - np.amin(img[:, 0])
 
         for i in [1, 2]:
             current_value =  np.amax(img[:, i]) - np.amin(img[:, i])
@@ -62,13 +86,15 @@ class ColorQuantization():
     # ----------------------------------------------------- CUBE CUT
 
     def cube_cut(self, img, n, MAX=256):
+        img = img.copy()
+
         hei, wid = img.shape[:2]
         img = img.reshape((hei * wid, 3))
         buckets = self.__get_buckets_cube(n)
 
         # for B, G and R
         for channel in range(3):
-            steps = self.MAX//buckets[channel]
+            steps = MAX//buckets[channel]
 
             # for each bucket
             for i in range(1, buckets[channel]+1):
@@ -91,9 +117,10 @@ class ColorQuantization():
     # ----------------------------------------------------- K-MEDIANAS
 
     def k_means(self, img, n):
+        img = img.copy()
         hei, wid = img.shape[:2]
-
         img = img.reshape((hei * wid, 3))
+
         cluster = MiniBatchKMeans(n_clusters = n)
         labels = cluster.fit_predict(img)
         qtz = cluster.cluster_centers_.astype("uint8")[labels]    
@@ -124,16 +151,16 @@ class ColorQuantization():
             for i in [2**j for j in range(9)]:
                 cv2.imwrite(
                     current_output + str(i) + ".png",
-                    self.quatizators[quantizator](img.copy(), i)
+                    self.quatizators[quantizator](img, i)
                 )
 
 
         
         
-
 qtz = ColorQuantization()
-
 input_img = cv2.resize(cv2.imread('./inputs/rgb_cube.png', 1), (512,512))
+
+'''
 qtz.every_quantization(input_img, 'rgb_cube')
 
 input_img = cv2.imread('./inputs/Lenna_2019.jpg', 1)
@@ -143,12 +170,10 @@ input_img = cv2.imread('./inputs/Lenna.png', 1)
 qtz.every_quantization(input_img, 'Lenna')
 
 '''
-n = 8
+n = 16
 print("Input shape: {} / MAX: {}".format(input_img.shape, input_img.max()))
 cv2.imshow('x', input_img)
-cv2.imshow('cube-cut', qtz.cube_cut(input_img.copy(), n))
-cv2.imshow('k-means', qtz.k_means(input_img.copy(), n))
+cv2.imshow('cube-cut', qtz.cube_cut(input_img, n))
+cv2.imshow('k-means', qtz.k_means(input_img, n))
+cv2.imshow('median-cut', qtz.median_cut(input_img, n))
 cv2.waitKey(0)
-print(qtz.check_number_colors(qtz.cube_cut(input_img.copy(), n)))
-'''
-
