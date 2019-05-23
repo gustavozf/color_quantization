@@ -13,7 +13,7 @@ class ColorQuantization():
     def __init__(self):
         self.quatizators = {
             #'median_cut' : self.median_cut,
-            'cube_cut'   : self.cube_cut,
+            'uniform_cut': self.uniform_cut,
             'k_means'    : self.k_means
         }
 
@@ -22,70 +22,38 @@ class ColorQuantization():
     def median_cut(self, img, n):
         img = img.copy()
 
-        hei, wid = img.shape[:2]
-        img = img.reshape((hei * wid, 3))
+        V = self.__get_V(img)
+        max_channel = self.__get_max(V)
 
-        x = np.argwhere(img >= 0)
-        np.shape(x)
-        print(x)
-
-        buckets = [list(range(hei*wid))]
         while n > 1:
-            for _ in range(len(buckets)):
-                # get the first buckets
-                bucket = buckets.pop(0)
-                current_img = img[bucket]
-
-                #get the heaviest (RGB)
-                index_heav = self.__get_heaviest(current_img, bucket)
-
-                # sort according to the heaviest column
-                mean_value = np.mean(current_img[:, index_heav])
-                np.argwhere()
-                #sorted_args = current_img[:, index_heav].argsort()
-                #current_img = current_img[sorted_args]
-                #bucket = bucket[sorted_args]
-                
-                # get the bucket's lenght/2
-                #index_mid = len(current_img[:, index_heav])//2
-
-                # append both new buckets
-                buckets.append(bucket[:index_mid, :])
-                buckets.append(bucket[index_mid:, :])
-
+            
             n //= 2
-
-        for bucket in buckets:
-            img[bucket] = np.array([
-                int(np.mean(img[bucket][:, 0])),
-                int(np.mean(img[bucket][:, 1])),
-                int(np.mean(img[bucket][:, 2]))
-            ])
-
-        return img.reshape((hei, wid, 3))
-
-    def __get_heaviest(self, img, bucket):
-        cur_img = np.where(
-            (img[:, 0] >= np.amin(bucket[:, 0])) & 
-            (img[:, 0] <= np.amax(bucket[:, 0]))
-        )[0]
+            
         
-        heaviest = 0
-        heav_value = np.amax(cur_img) - np.amin(img[:, 0])
+        return img
 
-        for i in [1, 2]:
-            current_value =  np.amax(img[:, i]) - np.amin(img[:, i])
+    def __get_V(self, img):
+        b = img[:,:, 0]
+        g = img[:,:, 1]
+        r = img[:,:, 2]
 
-            if current_value > heav_value:
-                heaviest = i
-                heav_value = current_value
+        return [
+            [b.min(), b.max()],
+            [g.min(), g.max()],
+            [r.min(), r.max()]
+        ]
 
-        return heaviest
+    def __get_max(self, V):
 
+        return np.argmax([
+            V[0, 1] - V[0, 0],
+            V[1, 1] - V[1, 0],
+            V[2, 1] - V[2, 0]
+        ])
 
     # ----------------------------------------------------- CUBE CUT
 
-    def cube_cut(self, img, n, MAX=256):
+    def uniform_cut(self, img, n, MAX=256):
         img = img.copy()
 
         hei, wid = img.shape[:2]
@@ -127,9 +95,14 @@ class ColorQuantization():
         
         return qtz.reshape((hei, wid, 3))
 
-    def check_number_colors(self, img):
-        hei, wid = img.shape[:2]
-        return np.unique(img)
+    def PSNR(self, img_orig, img_quant, MAX=256.0):
+        MAX -= 1
+
+        mse = np.mean((img_orig - img_quant) ** 2)
+        if mse == 0:
+            return 100
+
+        return 20 * np.log10(MAX / np.sqrt(mse))
 
     def every_quantization(self, img, name):
         output = "./outputs/{}/".format(name)
