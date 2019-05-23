@@ -52,10 +52,35 @@ class ColorQuantization():
         ])
 
     # ----------------------------------------------------- CUBE CUT
+    def __tri_factors(self, n):
+        mmc = [] #vetor contendo os mmc's de n
+        divisor = 2 
+        while n > 1:
+            if n%divisor == 0:
+                mmc.append(divisor)
+                n = n/divisor
+            else:
+                divisor += 1
+
+        if len(mmc) < 3:
+            mmc.extend([1 for i in range(3 - len(mmc))])
+        elif len(mmc) > 3:
+            step = len(mmc)//3
+            mmc = [np.prod(mmc[:step]), np.prod(mmc[step:step*2+1]), np.prod(mmc[step*2+1:])]
+        return mmc    
 
     def uniform_cut(self, img, n, MAX=256):
         img = img.copy()
 
+        a, b, c = self.__tri_factors(n)
+
+        a = np.linspace(0, 255, a, dtype=int)
+        b = np.linspace(0, 255, b, dtype=int)
+        c = np.linspace(0, 255, c, dtype=int)
+
+        colors = [[A, B, C] for A in a for B in b for C in c]
+        
+        '''
         hei, wid = img.shape[:2]
         img = img.reshape((hei * wid, 3))
         buckets = self.__get_buckets_cube(n)
@@ -81,7 +106,7 @@ class ColorQuantization():
             x[j] += 1
         
         return [2**x[0], 2**x[1], 2**x[2]]
-
+    '''
     # ----------------------------------------------------- K-MEDIANAS
 
     def k_means(self, img, n):
