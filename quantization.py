@@ -36,24 +36,31 @@ class ColorQuantization():
                 print(current_v, heaviest_c)
 
                 # Pega as cores pelo mais pesado
-                heav_mask = np.logical_and(img[:, heaviest_c] >= current_v[heaviest_c][0], img[:, heaviest_c] <= current_v[heaviest_c][1])
-                
+                heaviest_indexes = np.array(list(self.__get_indexes(img, heaviest_c, current_v[heaviest_c][0], current_v[heaviest_c][1])))
+                print(heaviest_indexes)
+
                 # pega a mediana do eixo mais pesado
-                median = np.median(img[np.where(heav_mask)[0], heaviest_c])
-                
+                x = img[heaviest_indexes, heaviest_c]
+                print(x)
+                median = np.median(np.sort(x))
+                print("MEDIANA: ", median)
+
                 # serapa em dois vetores, um "<= mediana" e outro "> mediana"
-                inf_cut = np.logical_and(img[:, heaviest_c] >= current_v[heaviest_c][0], img[:, heaviest_c] <= median)
-                sup_cut = np.logical_and(img[:, heaviest_c] <= current_v[heaviest_c][1], img[:, heaviest_c] > median)
+                inf_cut = set(np.argwhere(img[:, heaviest_c] >= current_v[heaviest_c][0])[:,0]) & set(np.argwhere(img[:, heaviest_c] <= median)[:,0])
+                sup_cut = set(np.argwhere(img[:, heaviest_c] <= current_v[heaviest_c][1])[:,0]) & set(np.argwhere(img[:, heaviest_c] > median)[:,0])
                 
+                # pega as cores dos demais canais
                 c1, c2 = {0, 1, 2} - {heaviest_c}
-                # TA ERRADO ISSO AQUI E EU VOU ARRUMAR
-                cut_mask = np.logical_and(
-                    np.logical_and(img[:, c1] >= current_v[c1][0], img[:, c1] <= current_v[c1][1]),
-                    np.logical_and(img[:, c2] >= current_v[c2][0], img[:, c2] <= current_v[c2][1])
-                )
+                cut_mask = [
+                    self.__get_indexes(img, c1, current_v[c1][0], current_v[c1][1]),
+                    self.__get_indexes(img, c2, current_v[c2][0], current_v[c2][1])
+                ]
                 
-                v1 = self.__get_V(img[np.where(np.logical_and(cut_mask, inf_cut))[0], :])
-                v2 = self.__get_V(img[np.where(np.logical_and(cut_mask, sup_cut))[0], :])
+                inf_cut = list(cut_mask[0] & cut_mask[1] & inf_cut)
+                sup_cut = list(cut_mask[0] & cut_mask[1] & sup_cut)
+
+                v1 = self.__get_V(img[inf_cut, :])
+                v2 = self.__get_V(img[sup_cut, :])
 
                 # adiciona entre os demais baldes
                 buckets.extend([v1, v2])
@@ -89,6 +96,9 @@ class ColorQuantization():
             V[1][1] - V[1][0],
             V[2][1] - V[2][0]
         ])
+
+    def __get_indexes(self, img, channel, min_v, max_v):
+        return set(np.argwhere(img[:, channel] >= min_v)[:,0]) & set(np.argwhere(img[:, channel] <= max_v)[:,0])
 
     # ----------------------------------------------------- CUBE CUT
     def __tri_factors(self, n):
@@ -149,9 +159,9 @@ class ColorQuantization():
         
         return qtz.reshape((hei, wid, 3))
 
-    # ---------------------------------------------------- PSNR
+    # ---------------------------------------------------- CPSNR
 
-    def PSNR(self, img_orig, img_quant, MAX=256.0):
+    def CPSNR(self, img_orig, img_quant, MAX=256.0):
         MAX -= 1
 
         mse = np.mean((img_orig - img_quant) ** 2)
@@ -166,5 +176,4 @@ qtz = ColorQuantization()
 input_img = cv2.resize(cv2.imread('./inputs/rgb_cube.png', 1), (512,512))
 
 for i in [1,2,4,8,16,32,64,128,256]:
-    print(i)
     cv2.imwrite('./outputs/rgb_cube/median_cut/' + str(i) + '.png', qtz.median_cut(input_img, i))
