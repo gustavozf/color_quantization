@@ -71,13 +71,13 @@ class ColorQuantization():
             
         # para todos os buckets
         for args in buckets:
-            v = self.__get_V(img, args)
+            #v = self.__get_V(img, args)
             for i in range(3):
-                min_v, max_v = v[i]
+                #min_v, max_v = v[i]
                 # pega as cores do canal/bucket
-                indexes = np.argwhere(np.logical_and(img[:, i] >= min_v, img[:, i] <= max_v))[:,0]
+                #indexes = np.argwhere(np.logical_and(img[:, i] >= min_v, img[:, i] <= max_v))[:,0]
                 # as transforma em uma unica cor
-                img[indexes, i] = np.mean(img[indexes, i])
+                img[args, i] = np.mean(img[args, i])
 
         return img.reshape((hei, wid, 3))
 
