@@ -2,5 +2,5 @@
 
 Color quantization using three different approaches:
 - Median Cut
-- Cube Cut
+- Uniform Cut
 - k-Means
