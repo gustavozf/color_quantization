@@ -28,11 +28,14 @@ class ColorQuantization():
         buckets = [args]
 
         while n > 1:
-            print('--------------', n)
+            print('Iteration: ', n)
             i = 0
             for _ in range(len(buckets)):
                 current_args = buckets.pop(0)
 
+                # se caso caia em uma balde vazio, pula a iteracao
+                # isso pode acontecer por dividir um balde de 1 elemento
+                # logo, um novo balde fica vazio e o outro com o elemento
                 if not len(current_args):
                     continue
 
@@ -158,9 +161,9 @@ class ColorQuantization():
 
         
 qtz = ColorQuantization()
-input_img = cv2.resize(cv2.imread('./inputs/rgb_cube.png', 1), (512,512))
+input_img = cv2.resize(cv2.imread('./inputs/Lenna.png', 1), (512,512))
 
 for i in [1,2,4,8,16,32,64,128,256]:
     print()
     print(i)
-    cv2.imwrite('./outputs/rgb_cube/median_cut/' + str(i) + '.png', qtz.median_cut(input_img, i))
+    cv2.imwrite('./outputs/Lenna/median_cut/' + str(i) + '.png', qtz.median_cut(input_img, i))
