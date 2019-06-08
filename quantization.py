@@ -6,7 +6,7 @@ Trabalho 1 - Quantization
 Gustavo Zanoni Felipe
 '''
 import numpy as np
-import cv2, os
+import cv2, os, time
 from sklearn.cluster import MiniBatchKMeans
 
 class ColorQuantization():
@@ -106,34 +106,46 @@ class ColorQuantization():
             mmc = [np.prod(mmc[:step]), np.prod(mmc[step:step*2+1]), np.prod(mmc[step*2+1:])]
         return mmc    
 
-    def uniform_cut(self, img, n, MAX=256):
+    def uniform_cut(self, img, n, MAX=256, mode=1):
         img = img.copy()
+        hei, wid = img.shape[:2]
+        img = img.reshape((hei * wid, 3))
 
         a, b, c = self.__tri_factors(n)
 
-        a = np.linspace(0, MAX-1, a, dtype=int)
-        b = np.linspace(0, MAX-1, b, dtype=int)
-        c = np.linspace(0, MAX-1, c, dtype=int)
+        if mode == 1:
+            a = np.linspace(0, MAX-1, a, dtype=int)
+            b = np.linspace(0, MAX-1, b, dtype=int)
+            c = np.linspace(0, MAX-1, c, dtype=int)
 
-        print(a, b, c)
+            #print(a, b, c)
 
-        colors = np.array([[A, B, C] for A in a for B in b for C in c])
-        '''
-        hei, wid = img.shape[:2]
-        img = img.reshape((hei * wid, 3))
-        buckets = self.__get_buckets_cube(n)
+            colors = np.array([[A, B, C] for A in a for B in b for C in c])
 
-        # for B, G and R
-        for channel in range(3):
-            steps = MAX//buckets[channel]
+            distances = []
+            # olha para todos os pontos calculados
+            for color in colors:
+                # adiciona as distancias para cada ponto em uma lista
+                distances.append(
+                    list(map(lambda i: np.linalg.norm(i-color), img))
+                    )
 
-            # for each bucket
-            for i in range(1, buckets[channel]+1):
-                args = np.argwhere((img[:,channel] >=steps*(i-1)) & (img[:,channel] < steps*i))[:, 0] #<= steps*i))
-                img[args, channel] = int(np.mean(img[args, channel]))
+            # pega o argumento minimo dentre todos os pontos vistos
+            # ou seja, olha o mais proximo e pega o index
+            # utilizar o "colors" como um LUT para gerar a nova image
+            img = colors[np.argmin(distances, axis=0)]
+        else:
+            buckets = [a, b, c]
+            for channel in range(3):
+                steps = MAX//buckets[channel]
+                for i in range(1, buckets[channel]+1):
+                    args = np.argwhere((img[:,channel] >=steps*(i-1)) & (img[:,channel] < steps*i))[:, 0]
+                    # caso nao caia em um balde vazio
+                    if args.any():
+                        # atualiza os pixels desse balde pela media entre eles
+                        img[args, channel] = int(np.mean(img[args, channel]))
 
         return img.reshape((hei, wid, 3))
-        '''
     # ----------------------------------------------------- K-MEDIANAS
 
     def k_means(self, img, n):
@@ -161,9 +173,13 @@ class ColorQuantization():
 
         
 qtz = ColorQuantization()
-input_img = cv2.resize(cv2.imread('./inputs/Lenna.png', 1), (512,512))
+input_img = cv2.imread('./inputs/Lenna.png', 1)
 
+begin = time.time()
 for i in [1,2,4,8,16,32,64,128,256]:
     print()
     print(i)
-    cv2.imwrite('./outputs/Lenna/median_cut/' + str(i) + '.png', qtz.median_cut(input_img, i))
+    cv2.imwrite('./outputs/Lenna/uniform_cut_2/' + str(i) + '.png', qtz.uniform_cut(input_img, i, mode=2))
+
+print("Execution time= ", time.time() - begin)
+
