@@ -29,7 +29,6 @@ class ColorQuantization():
 
         while n > 1:
             print('Iteration: ', n)
-            i = 0
             for _ in range(len(buckets)):
                 current_args = buckets.pop(0)
 
@@ -40,8 +39,7 @@ class ColorQuantization():
                     continue
 
                 # pega o mais pesado entre o BGR
-                current_v = self.__get_V(img, current_args)
-                heaviest_c = self.__get_heaviest(current_v)
+                heaviest_c = self.__get_heaviest(img, current_args)
 
                 # pega a mediana do eixo mais pesado
                 median = np.median(np.sort(img[current_args, heaviest_c]))
@@ -53,8 +51,6 @@ class ColorQuantization():
                 # atualiza os baldes
                 buckets.extend([list(inf_cut), list(sup_cut)])
 
-                i += 1
-
             n //= 2
             
         # para todos os buckets
@@ -64,25 +60,17 @@ class ColorQuantization():
 
         return img.reshape((hei, wid, 3))
 
-    def __get_V(self, img, args):
+    def __get_heaviest(self, img, args):
         b = img[args, 0]
         g = img[args, 1]
         r = img[args, 2]
 
         #print('B: {} / G: {} / R : {}\n'.format(len(b), len(g), len(r)))
 
-        return [
-            [b.min(), b.max()],
-            [g.min(), g.max()],
-            [r.min(), r.max()]
-        ]
-
-    def __get_heaviest(self, V):
-
         return np.argmax([
-            V[0][1] - V[0][0],
-            V[1][1] - V[1][0],
-            V[2][1] - V[2][0]
+            b.max() - b.min(),
+            g.max() - g.min(),
+            r.max() - r.min()
         ])
 
     def __get_indexes(self, img, channel, min_v, max_v):
@@ -117,29 +105,29 @@ class ColorQuantization():
             a = np.linspace(0, MAX-1, a, dtype=int)
             b = np.linspace(0, MAX-1, b, dtype=int)
             c = np.linspace(0, MAX-1, c, dtype=int)
-
             #print(a, b, c)
 
-            colors = np.array([[A, B, C] for A in a for B in b for C in c])
+            colors = np.array(np.meshgrid(a, b, c)).T.reshape(-1, 3)
 
             distances = []
             # olha para todos os pontos calculados
             for color in colors:
                 # adiciona as distancias para cada ponto em uma lista
-                distances.append(
-                    list(map(lambda i: np.linalg.norm(i-color), img))
-                    )
+                distances.append(list(map(lambda i: np.linalg.norm(i-color), img)))
 
             # pega o argumento minimo dentre todos os pontos vistos
             # ou seja, olha o mais proximo e pega o index
             # utilizar o "colors" como um LUT para gerar a nova image
             img = colors[np.argmin(distances, axis=0)]
         else:
+            a = np.linspace(0, MAX, a+1, dtype=int)
+            b = np.linspace(0, MAX, b+1, dtype=int)
+            c = np.linspace(0, MAX, c+1, dtype=int)
+            
             buckets = [a, b, c]
             for channel in range(3):
-                steps = MAX//buckets[channel]
-                for i in range(1, buckets[channel]+1):
-                    args = np.argwhere((img[:,channel] >=steps*(i-1)) & (img[:,channel] < steps*i))[:, 0]
+                for i in range(1, len(buckets[channel])):
+                    args = np.argwhere((img[:,channel] >= buckets[channel][i-1]) & (img[:,channel] < buckets[channel][i]))[:, 0]
                     # caso nao caia em um balde vazio
                     if args.any():
                         # atualiza os pixels desse balde pela media entre eles
