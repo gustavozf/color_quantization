@@ -10,14 +10,6 @@ import cv2, os, time
 from sklearn.cluster import MiniBatchKMeans
 
 class ColorQuantization():
-    def __init__(self):
-        self.quatizators = {
-            'median_cut' : self.median_cut,
-            'uniform_cut': self.uniform_cut,
-            'k_means'    : self.k_means
-        }
-
-
     # ----------------------------------------------------- MEDIAN CUT
     def median_cut(self, img, n):
         img = img.copy()
@@ -65,18 +57,39 @@ class ColorQuantization():
         g = img[args, 1]
         r = img[args, 2]
 
-        #print('B: {} / G: {} / R : {}\n'.format(len(b), len(g), len(r)))
-
         return np.argmax([
             b.max() - b.min(),
             g.max() - g.min(),
             r.max() - r.min()
         ])
+    # ----------------------------------------------------- UNIFORM CUT
+    def uniform_cut(self, img, n, MAX=256, mode=1):
+        img = img.copy()
+        hei, wid = img.shape[:2]
+        img = img.reshape((hei * wid, 3))
 
-    def __get_indexes(self, img, channel, min_v, max_v):
-        return set(np.argwhere(img[:, channel] >= min_v)[:,0]) & set(np.argwhere(img[:, channel] <= max_v)[:,0])
+        a, b, c = self.__tri_factors(n)
 
-    # ----------------------------------------------------- CUBE CUT
+        a = np.linspace(0, MAX-1, a, dtype=int)
+        b = np.linspace(0, MAX-1, b, dtype=int)
+        c = np.linspace(0, MAX-1, c, dtype=int)
+        #print(a, b, c)
+
+        colors = np.array(np.meshgrid(a, b, c)).T.reshape(-1, 3)
+
+        distances = []
+        # olha para todos os pontos calculados
+        for color in colors:
+            # adiciona as distancias para cada ponto em uma lista
+            distances.append(list(map(lambda i: np.linalg.norm(i-color), img)))
+
+        # pega o argumento minimo dentre todos os pontos vistos
+        # ou seja, olha o mais proximo e pega o index
+        # utilizar o "colors" como um LUT para gerar a nova image
+        img = colors[np.argmin(distances, axis=0)]
+
+        return img.reshape((hei, wid, 3))
+
     def __tri_factors(self, n):
         mmc = [] #vetor contendo os mmc's de n
         divisor = 2 
@@ -93,49 +106,7 @@ class ColorQuantization():
             step = len(mmc)//3
             mmc = [np.prod(mmc[:step]), np.prod(mmc[step:step*2+1]), np.prod(mmc[step*2+1:])]
         return mmc    
-
-    def uniform_cut(self, img, n, MAX=256, mode=1):
-        img = img.copy()
-        hei, wid = img.shape[:2]
-        img = img.reshape((hei * wid, 3))
-
-        a, b, c = self.__tri_factors(n)
-
-        if mode == 1:
-            a = np.linspace(0, MAX-1, a, dtype=int)
-            b = np.linspace(0, MAX-1, b, dtype=int)
-            c = np.linspace(0, MAX-1, c, dtype=int)
-            #print(a, b, c)
-
-            colors = np.array(np.meshgrid(a, b, c)).T.reshape(-1, 3)
-
-            distances = []
-            # olha para todos os pontos calculados
-            for color in colors:
-                # adiciona as distancias para cada ponto em uma lista
-                distances.append(list(map(lambda i: np.linalg.norm(i-color), img)))
-
-            # pega o argumento minimo dentre todos os pontos vistos
-            # ou seja, olha o mais proximo e pega o index
-            # utilizar o "colors" como um LUT para gerar a nova image
-            img = colors[np.argmin(distances, axis=0)]
-        else:
-            a = np.linspace(0, MAX, a+1, dtype=int)
-            b = np.linspace(0, MAX, b+1, dtype=int)
-            c = np.linspace(0, MAX, c+1, dtype=int)
-            
-            buckets = [a, b, c]
-            for channel in range(3):
-                for i in range(1, len(buckets[channel])):
-                    args = np.argwhere((img[:,channel] >= buckets[channel][i-1]) & (img[:,channel] < buckets[channel][i]))[:, 0]
-                    # caso nao caia em um balde vazio
-                    if args.any():
-                        # atualiza os pixels desse balde pela media entre eles
-                        img[args, channel] = int(np.mean(img[args, channel]))
-
-        return img.reshape((hei, wid, 3))
     # ----------------------------------------------------- K-MEDIANAS
-
     def k_means(self, img, n):
         img = img.copy()
         hei, wid = img.shape[:2]
@@ -146,9 +117,7 @@ class ColorQuantization():
         qtz = cluster.cluster_centers_.astype("uint8")[labels]    
         
         return qtz.reshape((hei, wid, 3))
-
     # ---------------------------------------------------- CPSNR
-
     def CPSNR(self, img_orig, img_quant, MAX=256.0):
         MAX -= 1
 
@@ -158,7 +127,7 @@ class ColorQuantization():
 
         return 20 * np.log10(MAX / np.sqrt(mse))
 
-
+# --------------------------------------------------------------------------------------------- Main
         
 qtz = ColorQuantization()
 input_img = cv2.imread('./inputs/Lenna.png', 1)
@@ -167,7 +136,14 @@ begin = time.time()
 for i in [1,2,4,8,16,32,64,128,256]:
     print()
     print(i)
-    cv2.imwrite('./outputs/Lenna/uniform_cut_2/' + str(i) + '.png', qtz.uniform_cut(input_img, i, mode=2))
+    cv2.imwrite('./outputs/Lenna/median_cut/' + str(i) + '.png', qtz.median_cut(input_img, i))
 
 print("Execution time= ", time.time() - begin)
 
+begin = time.time()
+for i in [1,2,4,8,16,32,64,128,256]:
+    print()
+    print(i)
+    cv2.imwrite('./outputs/Lenna/uniform_cut/' + str(i) + '.png', qtz.uniform_cut(input_img, i))
+
+print("Execution time= ", time.time() - begin)
