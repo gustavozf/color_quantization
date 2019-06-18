@@ -130,13 +130,14 @@ class ColorQuantization():
 # --------------------------------------------------------------------------------------------- Main
         
 qtz = ColorQuantization()
-input_img = cv2.imread('./inputs/Lenna.png', 1)
+input_img = cv2.imread('./inputs/03.jpg', 1)
+outputs = ['./outputs/03/median_cut/', './outputs/03/uniform_cut/']
 
 begin = time.time()
 for i in [1,2,4,8,16,32,64,128,256]:
     print()
     print(i)
-    cv2.imwrite('./outputs/Lenna/median_cut/' + str(i) + '.png', qtz.median_cut(input_img, i))
+    cv2.imwrite(outputs[0] + str(i) + '.png', qtz.median_cut(input_img, i))
 
 print("Execution time= ", time.time() - begin)
 
@@ -144,6 +145,19 @@ begin = time.time()
 for i in [1,2,4,8,16,32,64,128,256]:
     print()
     print(i)
-    cv2.imwrite('./outputs/Lenna/uniform_cut/' + str(i) + '.png', qtz.uniform_cut(input_img, i))
+    cv2.imwrite(outputs[1] + str(i) + '.png', qtz.uniform_cut(input_img, i))
 
 print("Execution time= ", time.time() - begin)
+
+print("Creating CPSNR file:")
+cpsnr = open('./outputs/03/cpsnr.txt', 'w')
+
+for dir_path in outputs:
+    cpsnr.write(dir_path + '\n')
+    for i in [2**j for j in range(9)]:
+        print(dir_path + str(i) + '.png')
+        cur_img = cv2.imread(dir_path + str(i) + '.png', 1)
+
+        cpsnr.write('{}: {}\n'.format(i, qtz.CPSNR(input_img, cur_img)))
+        
+    cpsnr.write('\n')
