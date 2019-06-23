@@ -1,9 +1,12 @@
 '''
+Universidade Estadual de Maringa
+Bacharelado em Ciencia da Computacao
 PDI - Prof Franklin Cesar Flores
-Trabalho 1 - Quantization
+Trabalho 1 - Quantizacao
 
-
-Gustavo Zanoni Felipe
+Alunos:
+    Gustavo Zanoni Felipe - ra92821
+    Mariana Soder         - ra95381
 '''
 import numpy as np
 import cv2, os, time
@@ -132,26 +135,31 @@ class ColorQuantization():
 qtz = ColorQuantization()
 input_img = cv2.imread('./inputs/03.jpg', 1)
 outputs = ['./outputs/03/median_cut/', './outputs/03/uniform_cut/']
+n_values = [1,2,4,8,16,32,64,128,256]
 
+print("Imagem de entrada: './inputs/03.jpg'")
+print("Diretorio de saida: './outputs/03/'")
+# ---------------------------------------------------------------
+print("\nMedian Cut...")
 begin = time.time()
-for i in [1,2,4,8,16,32,64,128,256]:
+for i in n_values:
     print()
     print(i)
     cv2.imwrite(outputs[0] + str(i) + '.png', qtz.median_cut(input_img, i))
 
-print("Execution time= ", time.time() - begin)
-
+print("\nExecution time= ", time.time() - begin)
+# ----------------------------------------------------------------
+print("\nUniform Cut...")
 begin = time.time()
-for i in [1,2,4,8,16,32,64,128,256]:
+for i in n_values:
     print()
     print(i)
     cv2.imwrite(outputs[1] + str(i) + '.png', qtz.uniform_cut(input_img, i))
 
 print("Execution time= ", time.time() - begin)
-
-print("Creating CPSNR file:")
+# ---------------------------------------------------------------
+print("\nCreating CPSNR file:")
 cpsnr = open('./outputs/03/cpsnr.txt', 'w')
-
 for dir_path in outputs:
     cpsnr.write(dir_path + '\n')
     for i in [2**j for j in range(9)]:
